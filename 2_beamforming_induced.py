@@ -25,8 +25,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2001'
-session = '01N'
+subject = '2011'
+session = '03N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -50,7 +50,7 @@ events = mne.read_events(op.join(deriv_path.directory,
 
 #%% epoch based on trigger
 
-event_id = 101     # trigger of interest, [1 31] -> btn press, [101, 102] -> stim
+event_id = 1   # trigger of interest, [1 31] -> btn press, [101, 102] -> stim
 tmin, tmax = -0.5, 1
 epochs = mne.Epochs(
     data,
@@ -64,7 +64,7 @@ epochs = mne.Epochs(
 
 #%% prefilter epochs before calculating covariance
 
-fband = [8, 13]
+fband = [13, 30]
 epochs.filter(fband[0], fband[1])
 epochs_filt = epochs.copy()
 
@@ -86,6 +86,7 @@ subjects_dir = r'R:\DRS-mTBI\Seb\mTBI_predict\FreeSurfer_SUBJECTS'
 
 # Name of the subject directory in FS subjects_dir
 fs_subject = 'sub-' + subject
+#fs_subject = "fsaverage"
 
 plot_bem_kwargs = dict(
     subject=fs_subject,
@@ -172,7 +173,7 @@ stc_change = (stc_active - stc_base) / (stc_active + stc_base)
 #%% visualise static sourcemap
  
 stc_change.plot(src=src, subject=fs_subject,
-                subjects_dir=subjects_dir, surface="pial", hemi="both")
+                subjects_dir=subjects_dir, surface="inflated", hemi="both")
 
 #%% apply beamformer to preprocessed raw data for timecourse extraction
  
