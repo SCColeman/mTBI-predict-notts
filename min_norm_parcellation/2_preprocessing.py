@@ -22,8 +22,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2011'
-session = '03N'
+subject = '2001'
+session = '01N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -88,7 +88,7 @@ eog_indices, eog_scores = ica.find_bads_eog(data, EOG_channels[0])
 blink_indices, blink_scores = ica.find_bads_eog(data, blink_channels)
 ecg_indices, ecg_scores = ica.find_bads_ecg(data, ECG_channels[0])
 
-ica.exclude = eog_indices + blink_indices + ecg_indices
+ica.exclude = list(dict.fromkeys(eog_indices + blink_indices + ecg_indices))
 
 # plot diagnostics
 ica.plot_properties(data, picks=ica.exclude)

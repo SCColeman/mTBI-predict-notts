@@ -82,8 +82,7 @@ epochs = mne.Epochs(
 #%% filter epochs for pseudo T
 
 fband = [13, 30]
-epochs.filter(fband[0], fband[1])
-epochs_filt = epochs.copy()
+epochs_filt = epochs.copy().filter(fband[0], fband[1])
 
 #%% compute active and control covariance of filtered data
 
