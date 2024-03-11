@@ -23,7 +23,7 @@ deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
 subject = '2003'
-session = '01N'
+session = '03N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -40,6 +40,7 @@ if not op.exists(deriv_path.directory):
 #%% load data for info 
 
 data = read_raw_bids(bids_path=bids_path, verbose=False)
+data.pick("mag")
 info = data.info
 
 #%% Get FS reconstruction for subject or use fsaverage for quick testing
@@ -77,7 +78,7 @@ coreg = mne.coreg.Coregistration(data.info, fs_subject,
                             subjects_dir=subjects_dir)
 mne.viz.plot_alignment(data.info, trans=coreg.trans, **plot_kwargs)
 coreg.fit_fiducials()
-coreg.set_grow_hair(10)
+coreg.set_grow_hair(0)
 coreg.fit_icp(20)
 coreg.omit_head_shape_points(5 / 1000)
 coreg.fit_icp(20)

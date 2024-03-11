@@ -50,20 +50,34 @@ for s, session in enumerate(sessions):
     data_fname = deriv_path.basename + "-source_epochs.fif"
     source_epochs.append(mne.read_epochs(op.join(deriv_path.directory, data_fname),
                          preload=True))
+    
+#%% create source raw
 
-#%% filter and apply Hilbert
+source_raw = []
+for source_epoch in source_epochs:
+    df = source_epoch.to_data_frame()
+    names = df.columns.to_list()[3:]
+    raw_data = df.iloc[:,3:].to_numpy().transpose()
+    raw_info = mne.create_info(ch_names=names, sfreq=250, ch_types='misc')
+    source_raw.append(mne.io.RawArray(raw_data, raw_info))
+
+#%% filter 
+
+source_filter = []
+for raw_inst in source_raw:
+    source_filter.append(raw_inst.copy().filter(8, 13, picks="all")) 
+    
+#%% apply Hilbert
 
 source_envelope = []
-for source_epoch in source_epochs:
-    source_envelope.append(source_epoch.filter(8, 13, picks="all").apply_hilbert(envelope=True, picks="all"))
+for raw_inst in source_filter:
+    source_envelope.append(raw_inst.copy().apply_hilbert(envelope=True, picks="all"))
 
 #%% convert to pandas dataframe for further steps
 
 X_list = []
 for session in range(len(sessions)):
-    df = source_envelope[session].to_data_frame()
-    X = df.iloc[:,3:]
-    del df
+    X = source_envelope[session].get_data().transpose()
     X_zscore = zscore(X, axis=0)
     X_list.append(X_zscore)
     

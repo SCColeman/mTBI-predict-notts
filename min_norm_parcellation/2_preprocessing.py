@@ -22,8 +22,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2001'
-session = '06N'
+subject = '2003'
+session = '03N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
