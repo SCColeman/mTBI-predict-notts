@@ -24,8 +24,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2011'
-session = '03N'
+subject = '2001'
+session = '05N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -81,7 +81,7 @@ epochs = mne.Epochs(
 
 #%% filter epochs for pseudo T
 
-fband = [13, 30]
+fband = [8, 13]
 epochs_filt = epochs.copy().filter(fband[0], fband[1])
 
 #%% compute active and control covariance of filtered data
@@ -176,7 +176,7 @@ parc = "aparc"
 labels = mne.read_labels_from_annot(fs_subject, parc=parc, subjects_dir=subjects_dir)
 
 # get induced peak within label
-label = 32
+label = 6
 stc_inlabel = stc_change.in_label(labels[label])
 label_peak = stc_inlabel.get_peak(mode="abs", vert_as_index=True)[0]
 

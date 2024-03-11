@@ -12,8 +12,8 @@ from matplotlib import pyplot as plt
 
 # set up path
 pos_path = r"R:\DRS-mTBI\Seb\mTBI_predict\pos_files"
-subject = "2001"
-session = "03N"
+subject = "2003"
+session = "01N"
 pos_fname = op.join(pos_path, subject + "_" + session + ".pos")
 pos_new_fname = op.join(pos_path, subject + "_" + session + "_fixed.pos")
 
@@ -30,7 +30,7 @@ fid_cluster2 = pos[-18:-3, 1:]
 # plot
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(111, projection='3d')
-ax.scatter(pos[:,1], pos[:,2], pos[:,3], alpha=0.1)
+ax.scatter(pos[:,1], pos[:,2], pos[:,3], alpha=0.2)
 ax.scatter(fid_cluster1[:,0], fid_cluster1[:,1], fid_cluster1[:,2], c="red")
 ax.scatter(fid_cluster2[:,0], fid_cluster2[:,1], fid_cluster2[:,2], c="green")
 

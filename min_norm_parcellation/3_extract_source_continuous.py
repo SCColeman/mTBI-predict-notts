@@ -22,8 +22,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2011'
-session = '03N'
+subject = '2001'
+session = '06N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -38,6 +38,7 @@ task=task, run=run, suffix=suffix, root=deriv_root)
 
 data = mne.io.Raw(op.join(deriv_path.directory, deriv_path.basename + "-raw.fif"))
 data.pick("mag")
+events = mne.read_events(op.join(deriv_path.directory, deriv_path.basename + "-events.fif"))
 src = op.join(deriv_path.directory, deriv_path.basename + "-src.fif")
 bem = op.join(deriv_path.directory, deriv_path.basename + "-bem.fif")
 trans = op.join(deriv_path.directory, deriv_path.basename + "-trans.fif")
@@ -55,13 +56,11 @@ del src
 inv = make_inverse_operator(data.info, fwd, cov)
 del fwd
 
-#%% epoch based on trigger
+#%% pseudo-epoch so we can remove bad segments
 
-duration = 10.0
-events = mne.make_fixed_length_events(data, duration=duration)
-tmax =  duration - (1/sfreq)
 epochs = mne.Epochs(
-    data, events=events, tmin=0, tmax=tmax, baseline=None, reject=dict(mag=4e-12)
+    data, events=events, event_id=[101, 102, 1, 32], tmin=-0.5, tmax=1.5, baseline=None, 
+    reject=dict(mag=4e-12), preload=True,
 )
 
 #%% parcellation beamformer

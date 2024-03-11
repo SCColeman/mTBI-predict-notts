@@ -22,7 +22,7 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2001'
+subject = '2003'
 session = '01N'
 task = 'CRT'  # name of the task
 run = '01'
@@ -77,6 +77,13 @@ coreg = mne.coreg.Coregistration(data.info, fs_subject,
                             subjects_dir=subjects_dir)
 mne.viz.plot_alignment(data.info, trans=coreg.trans, **plot_kwargs)
 coreg.fit_fiducials()
+coreg.set_grow_hair(10)
+coreg.fit_icp(20)
+coreg.omit_head_shape_points(5 / 1000)
+coreg.fit_icp(20)
+coreg.omit_head_shape_points(5 / 1000)
+coreg.fit_icp(20)
+coreg.omit_head_shape_points(5 / 1000)
 coreg.fit_icp(20)
 mne.viz.plot_alignment(data.info, trans=coreg.trans, **plot_kwargs)
 

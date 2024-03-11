@@ -22,8 +22,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2011'
-session = '03N'
+subject = '2001'
+session = '06N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -58,8 +58,8 @@ del fwd
 
 #%% epoch based on trigger
 
-event_id = [1, 32]   # trigger of interest, [1 31] -> btn press, [101, 102] -> stim
-tmin, tmax = -0.5, 1
+event_id = [101, 102] #[1, 32]   # trigger of interest, [1 31] -> btn press, [101, 102] -> stim
+tmin, tmax = -0.8, 1.2
 epochs = mne.Epochs(
     data,
     events,
@@ -76,7 +76,7 @@ epochs = mne.Epochs(
 # get labels from parcellation
 subjects_dir = r'R:\DRS-mTBI\Seb\mTBI_predict\FreeSurfer_SUBJECTS'
 fs_subject = 'sub-' + subject
-parc = "aparc.DKTatlas"
+parc = "aparc"
 labels = mne.read_labels_from_annot(fs_subject, parc=parc, subjects_dir=subjects_dir)
 
 stcs = apply_inverse_epochs(
