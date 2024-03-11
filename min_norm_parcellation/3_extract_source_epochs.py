@@ -22,8 +22,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2001'
-session = '06N'
+subject = '2003'
+session = '05N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -44,18 +44,6 @@ bem = op.join(deriv_path.directory, deriv_path.basename + "-bem.fif")
 trans = op.join(deriv_path.directory, deriv_path.basename + "-trans.fif")
 sfreq = data.info["sfreq"]
 
-#%% compute covariance
-
-cov = mne.compute_raw_covariance(data)
-
-#%% make forward model from files
-
-src = mne.read_source_spaces(src)
-fwd = mne.make_forward_solution(data.info, trans, src, bem, verbose=True)
-del src
-inv = make_inverse_operator(data.info, fwd, cov)
-del fwd
-
 #%% epoch based on trigger
 
 event_id = [101, 102] #[1, 32]   # trigger of interest, [1 31] -> btn press, [101, 102] -> stim
@@ -70,6 +58,18 @@ epochs = mne.Epochs(
     preload=True,
     reject=dict(mag=4e-12),
     reject_by_annotation=True)
+
+#%% compute covariance
+
+cov = mne.compute_covariance(epochs)
+
+#%% make forward model and inverse from files
+
+src = mne.read_source_spaces(src)
+fwd = mne.make_forward_solution(data.info, trans, src, bem, verbose=True)
+del src
+inv = make_inverse_operator(data.info, fwd, cov)
+del fwd
 
 #%% parcellation beamformer
 

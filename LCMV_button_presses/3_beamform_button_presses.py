@@ -24,7 +24,7 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
 
 # scanning session info
-subject = '2001'
+subject = '2003'
 session = '05N'
 task = 'CRT'  # name of the task
 run = '01'
@@ -46,24 +46,6 @@ bem = op.join(deriv_path.directory, deriv_path.basename + "-bem.fif")
 trans = op.join(deriv_path.directory, deriv_path.basename + "-trans.fif")
 sfreq = data.info["sfreq"]
 
-#%% compute covariance of all data, unfiltered
-
-cov = mne.compute_raw_covariance(data)
-
-#%% make forward and inverse solution 
-
-src = mne.read_source_spaces(src)
-fwd = mne.make_forward_solution(data.info, trans, src, bem, verbose=True)
-filters = mne.beamformer.make_lcmv(
-    data.info,
-    fwd,
-    cov,
-    reg=0.05,
-    noise_cov=None,
-    pick_ori="max-power",
-    weight_norm="unit-noise-gain",
-    rank=None)
-
 #%% epoch based on trigger
 
 event_id = [32]   # trigger of interest, [1 32] -> btn press, [101, 102] -> stim
@@ -79,9 +61,27 @@ epochs = mne.Epochs(
     reject=dict(mag=4e-12),
     reject_by_annotation=True)
 
+#%% compute covariance of all data, unfiltered
+
+cov = mne.compute_covariance(epochs)
+
+#%% make forward and inverse solution 
+
+src = mne.read_source_spaces(src)
+fwd = mne.make_forward_solution(data.info, trans, src, bem, verbose=True)
+filters = mne.beamformer.make_lcmv(
+    data.info,
+    fwd,
+    cov,
+    reg=0.05,
+    noise_cov=None,
+    pick_ori="max-power",
+    weight_norm="unit-noise-gain",
+    rank=None)
+
 #%% filter epochs for pseudo T
 
-fband = [8, 13]
+fband = [13, 30]
 epochs_filt = epochs.copy().filter(fband[0], fband[1])
 
 #%% compute active and control covariance of filtered data
@@ -131,7 +131,7 @@ source_epochs = mne.EpochsArray(epoch_peak_data, source_info,
                                 tmin=epochs.tmin)
 
 # TFR
-baseline = (-0.5, -0.2)
+baseline = (-0.4, -0.2)
 freqs = np.arange(1,35)
 n_cycles = freqs/2
 power = mne.time_frequency.tfr_morlet(source_epochs, freqs=freqs, n_cycles=n_cycles,
@@ -146,7 +146,7 @@ source_epochs_hilb = source_epochs_filt.copy().apply_hilbert(envelope=True, pick
 peak_timecourse = source_epochs_hilb.average(picks="all").apply_baseline(baseline)
 
 # calculate MRBD (beta desync) or other during-stimulus response
-stimulus_win = (0, 0.2)
+stimulus_win = (-0.1, 0.1)
 stimulus_ind = np.logical_and(peak_timecourse.times > stimulus_win[0], 
                           peak_timecourse.times < stimulus_win[1])
 stimulus_response = np.mean(peak_timecourse.get_data()[0][stimulus_ind])
@@ -176,7 +176,7 @@ parc = "aparc"
 labels = mne.read_labels_from_annot(fs_subject, parc=parc, subjects_dir=subjects_dir)
 
 # get induced peak within label
-label = 6
+label = 32
 stc_inlabel = stc_change.in_label(labels[label])
 label_peak = stc_inlabel.get_peak(mode="abs", vert_as_index=True)[0]
 
@@ -196,7 +196,7 @@ source_epochs = mne.EpochsArray(epoch_peak_data, source_info,
                                 tmin=epochs.tmin)
 
 # TFR
-baseline = (-0.5, -0.2)
+baseline = (0.6, 0.9)
 freqs = np.arange(1,35)
 n_cycles = freqs/2
 power = mne.time_frequency.tfr_morlet(source_epochs, freqs=freqs, n_cycles=n_cycles,
@@ -211,13 +211,13 @@ source_epochs_hilb = source_epochs_filt.copy().apply_hilbert(envelope=True, pick
 peak_timecourse = source_epochs_hilb.average(picks="all").apply_baseline(baseline)
 
 # calculate MRBD (beta desync) or other during-stimulus response
-stimulus_win = (0, 0.2)
+stimulus_win = (-0.1, 0.1)
 stimulus_ind = np.logical_and(peak_timecourse.times > stimulus_win[0], 
                           peak_timecourse.times < stimulus_win[1])
 stimulus_response = np.mean(peak_timecourse.get_data()[0][stimulus_ind])
 
 # calculate PMBR (beta rebound) or other poststimulus response
-poststim_win = (0.4, 0.6)
+poststim_win = (0.2, 0.4)
 poststim_ind = np.logical_and(peak_timecourse.times > poststim_win[0], 
                           peak_timecourse.times < poststim_win[1])
 poststim_response = np.mean(peak_timecourse.get_data()[0][poststim_ind])
