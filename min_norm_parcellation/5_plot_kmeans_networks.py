@@ -145,23 +145,24 @@ for state in range(k):
         nrows=2, ncols=1, figsize=(6, 6), gridspec_kw=dict(height_ratios=[5, 3])
     )
     
+    
     # we'll put the timecourse plot in the lower axes, and the brain above
     timecourse_idx = 1
     brain_idx = 0
     
+    divider = make_axes_locatable(axes[brain_idx])
+    cax = divider.append_axes("right", size="5%", pad=0.5)
+    
     time = np.linspace(-0.8, 1.2, len(cluster_evoked.get_data()[state]))
-    plt.plot(time, cluster_evoked.get_data()[state], color="black")
-    #plt.xlim([-0.75, 1.15])
-    #plt.ylim([0, 0.5])
-    plt.axvline(0, alpha=0.5, color="gray")
-    plt.ylabel("Fractional Occupancy")
-    plt.xlabel("Time (s)")
-    axes[1].grid(True)
+    axes[timecourse_idx].plot(time, cluster_evoked.get_data()[state], color="black")
+    axes[timecourse_idx].axvline(0, alpha=0.5, color="gray")
+    axes[timecourse_idx].set_ylabel("Fractional Occupancy")
+    axes[timecourse_idx].set_xlabel("Time (s)")
+    axes[timecourse_idx].grid(True)
     
     # brain plot
     axes[brain_idx].imshow(cropped_screenshot[state])
     axes[brain_idx].axis("off")
     # add a vertical colorbar with the same properties as the 3D one
-    divider = make_axes_locatable(axes[brain_idx])
-    cax = divider.append_axes("right", size="5%", pad=0.2)
     cbar = mne.viz.plot_brain_colorbar(cax, clim, colormap, label="Alpha Envelope (SD)")
+    plt.tight_layout()
