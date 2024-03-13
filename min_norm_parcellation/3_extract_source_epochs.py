@@ -19,11 +19,11 @@ mne.viz.set_3d_options(depth_peeling=False, antialias=False)
 #%% set up BIDS path
 
 bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
-deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
+deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2003'
-session = '05N'
+subject = '2001'
+session = '03N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -37,16 +37,23 @@ task=task, run=run, suffix=suffix, root=deriv_root)
 #%% load in data
 
 data = mne.io.Raw(op.join(deriv_path.directory, deriv_path.basename + "-raw.fif"))
+noise = mne.io.Raw(op.join(deriv_path.directory, deriv_path.basename + "-noise.fif"))
 data.pick("mag")
+noise.pick("mag")
 events = mne.read_events(op.join(deriv_path.directory, deriv_path.basename + "-events.fif"))
 src = op.join(deriv_path.directory, deriv_path.basename + "-src.fif")
 bem = op.join(deriv_path.directory, deriv_path.basename + "-bem.fif")
 trans = op.join(deriv_path.directory, deriv_path.basename + "-trans.fif")
 sfreq = data.info["sfreq"]
 
+#%% calculate noise covariance
+
+noise_cov = mne.compute_raw_covariance(noise)
+noise_cov.plot(data.info)
+
 #%% epoch based on trigger
 
-event_id = [101, 102] #[1, 32]   # trigger of interest, [1 31] -> btn press, [101, 102] -> stim
+event_id = [101, 102]  # trigger of interest
 tmin, tmax = -0.8, 1.2
 epochs = mne.Epochs(
     data,
@@ -54,22 +61,16 @@ epochs = mne.Epochs(
     event_id,
     tmin,
     tmax,
-    baseline=None,
+    baseline=(-0.4, -0.1),
     preload=True,
     reject=dict(mag=4e-12),
     reject_by_annotation=True)
-
-#%% compute covariance
-
-cov = mne.compute_covariance(epochs)
 
 #%% make forward model and inverse from files
 
 src = mne.read_source_spaces(src)
 fwd = mne.make_forward_solution(data.info, trans, src, bem, verbose=True)
-del src
-inv = make_inverse_operator(data.info, fwd, cov)
-del fwd
+inv = make_inverse_operator(data.info, fwd, noise_cov)
 
 #%% parcellation beamformer
 
@@ -80,8 +81,8 @@ parc = "aparc"
 labels = mne.read_labels_from_annot(fs_subject, parc=parc, subjects_dir=subjects_dir)
 
 stcs = apply_inverse_epochs(
-    epochs, inv, lambda2=1.0 / 9.0, pick_ori="normal", return_generator=True,
-    method="MNE"
+    epochs, inv, lambda2=2, pick_ori="normal", return_generator=True,
+    method="eLORETA"
 )
 
 label_ts = mne.extract_label_time_course(
