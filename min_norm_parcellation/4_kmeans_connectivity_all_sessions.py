@@ -22,7 +22,7 @@ mne.viz.set_3d_options(depth_peeling=False, antialias=False)
 #%% set up BIDS path
 
 bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
-deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
+deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
 subject = '2001'
@@ -58,7 +58,9 @@ for source_epoch in source_epochs:
     df = source_epoch.to_data_frame()
     names = df.columns.to_list()[3:]
     raw_data = df.iloc[:,3:].to_numpy().transpose()
-    raw_info = mne.create_info(ch_names=names, sfreq=250, ch_types='misc')
+    raw_info = mne.create_info(ch_names=names, 
+                               sfreq=source_epochs[0].info["sfreq"], 
+                               ch_types='misc')
     source_raw.append(mne.io.RawArray(raw_data, raw_info))
 
 #%% filter 
@@ -77,7 +79,7 @@ for raw_inst in source_filter:
 
 X_list = []
 for session in range(len(sessions)):
-    X = source_envelope[session].get_data().transpose()
+    X = source_filter[session].get_data().transpose()
     X_zscore = zscore(X, axis=0)
     X_list.append(X_zscore)
     
