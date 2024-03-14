@@ -21,11 +21,11 @@ mne.viz.set_3d_options(depth_peeling=False, antialias=False)
 #%% set up BIDS path
 
 bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
-deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
+deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2003'
-session = '05N'
+subject = '2011'
+session = '03N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -165,7 +165,7 @@ plt.axhline(stimulus_response, alpha=0.5, color="blue")
 plt.axhline(poststim_response, alpha=0.5, color="red")
 plt.legend(["Data", "Stim Response", "Poststim Response"])
 
-#%% extract peak timecourse from within a parcel
+#%% extract time-frequency response in label(s)
 
 # create generator
 stc_epochs = mne.beamformer.apply_lcmv_epochs(epochs, filters,
@@ -176,14 +176,34 @@ parc = "aparc"
 labels = mne.read_labels_from_annot(fs_subject, parc=parc, subjects_dir=subjects_dir)
 
 # get induced peak within label
-label = 32
-stc_inlabel = stc_change.in_label(labels[label])
+label_list = [32, 44]
+hemi = "lh"
+label_name = hemi + "motor"   # CHANGE THIS TO MATCH LABEL_LIST!!!!!!
+
+# combine vertices and pos from labels
+vertices = []
+pos = []
+for l in label_list:
+    vertices.append(labels[l].vertices)
+    pos.append(labels[l].pos)
+vertices = np.concatenate(vertices, axis=0)   
+pos = np.concatenate(pos, axis=0)
+
+# sort vertices and pos
+vert_order = np.argsort(vertices)
+vertices_ordered = vertices[vert_order]
+pos_ordered = pos[vert_order,:]
+
+new_label = mne.Label(vertices_ordered, pos_ordered, hemi="lh", 
+                      name=label_list, subject="sub-" + subject)
+
+stc_inlabel = stc_change.in_label(new_label)
 label_peak = stc_inlabel.get_peak(mode="abs", vert_as_index=True)[0]
 
 # extract timecourse of peak
 epoch_peak_data = np.zeros((n_epochs,1,epoch_len))
 for s,stc_epoch in enumerate(stc_epochs):
-    stc_epoch_label = mne.extract_label_time_course(stc_epoch, labels[label], 
+    stc_epoch_label = mne.extract_label_time_course(stc_epoch, new_label, 
                                                     src, mode=None)
     epoch_peak_data[s,0,:] = stc_epoch_label[0][label_peak,:]
     
@@ -196,7 +216,7 @@ source_epochs = mne.EpochsArray(epoch_peak_data, source_info,
                                 tmin=epochs.tmin)
 
 # TFR
-baseline = (0.6, 0.9)
+baseline = (-0.4, -0.1)
 freqs = np.arange(1,35)
 n_cycles = freqs/2
 power = mne.time_frequency.tfr_morlet(source_epochs, freqs=freqs, n_cycles=n_cycles,
@@ -229,4 +249,11 @@ plt.xlabel("Time (s)")
 plt.axhline(stimulus_response, alpha=0.5, color="blue")
 plt.axhline(poststim_response, alpha=0.5, color="red")
 plt.legend(["Data", "Stim Response", "Poststim Response"])
-plt.title(labels[label].name)
+plt.title(new_label.name)
+
+
+
+
+
+
+
