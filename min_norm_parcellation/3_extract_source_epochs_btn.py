@@ -12,30 +12,29 @@ import numpy as np
 import mne
 from mne_bids import BIDSPath
 from mne.minimum_norm import make_inverse_operator, apply_inverse_epochs, apply_inverse_cov
-import matplotlib
-from matplotlib import pyplot as plt
-
-matplotlib.use('Agg')  # backend that doesn't display fig
 
 ### need the following line so 3d plotting works, for some reason
 mne.viz.set_3d_options(depth_peeling=False, antialias=False)
 
-def source_recon(subject, session):
+#%% set up BIDS path
 
-    ### set up BIDS path    
-    deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
-    
-    # scanning session info
+bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
+deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
+
+# scanning session info
+subject = '2001'
+for session in ['03N', '05N', '06N']:
     task = 'CRT'  # name of the task
     run = '01'
     suffix = 'meg'
-   
+    
+    bids_path = BIDSPath(subject=subject, session=session,
+    task=task, run=run, suffix=suffix, root=bids_root)
+    
     deriv_path = BIDSPath(subject=subject, session=session,
     task=task, run=run, suffix=suffix, root=deriv_root)
-    
-    figs_dir = op.join(deriv_path.directory, 'figs')
-
-    ### load in data
+        
+    #%% load in data
     
     data = mne.io.Raw(op.join(deriv_path.directory, deriv_path.basename + "-raw.fif"))
     noise = mne.io.Raw(op.join(deriv_path.directory, deriv_path.basename + "-noise.fif"))
@@ -47,42 +46,40 @@ def source_recon(subject, session):
     trans = op.join(deriv_path.directory, deriv_path.basename + "-trans.fif")
     sfreq = data.info["sfreq"]
     
-    ### calculate noise covariance
+    #%% calculate noise covariance
     
     noise_cov = mne.compute_raw_covariance(noise)
-    noise_plot = noise_cov.plot(noise.info)
-    noise_plot[0].savefig(op.join(figs_dir, deriv_path.basename + "-noise_cov"))
-    plt.close()
+    noise_cov.plot(data.info)
     
-    ### epoch based on trigger
+    #%% epoch based on trigger
     
-    event_id = [101, 102]  # trigger of interest
-    tmin, tmax = -0.8, 1.2
+    event_id = [1, 32]  # [101, 102]  # trigger of interest
+    tmin, tmax = -0.8, 1.1
     epochs = mne.Epochs(
         data,
         events,
         event_id,
         tmin,
         tmax,
-        baseline=(-0.4, -0.1),
+        baseline=(-0.5, -0.2),
         preload=True,
         reject=dict(mag=4e-12),
         reject_by_annotation=True)
     
-    ### make forward model and inverse from files
+    #%% make forward model and inverse from files
     
     src = mne.read_source_spaces(src)
     fwd = mne.make_forward_solution(data.info, trans, src, bem, verbose=True)
     inv = make_inverse_operator(data.info, fwd, noise_cov)
     
-    ### test beamformer by plotting pseudo T
+    #%% test beamformer by plotting pseudo T
     
-    fband = [8, 13]
+    fband = [13, 30]
     epochs_filt = epochs.copy().filter(fband[0], fband[1])
     lambda2 = 1  # this should be 1/SNR^2, but we assume SNR=1 for non-evoked data
     
-    act_min, act_max = 0.2, 0.5
-    con_min, con_max = -0.6, -0.3
+    act_min, act_max = -0.1, 0.2
+    con_min, con_max = -0.5, -0.2
     
     active_cov = mne.compute_covariance(epochs_filt, tmin=act_min, tmax=act_max, method="shrunk")
     control_cov= mne.compute_covariance(epochs_filt, tmin=con_min, tmax=con_max, method="shrunk")
@@ -102,7 +99,7 @@ def source_recon(subject, session):
     subjects_dir = r'R:\DRS-mTBI\Seb\mTBI_predict\FreeSurfer_SUBJECTS'
     fs_subject = 'sub-' + subject
      
-    brain = stc_change.plot(src=src, subject=fs_subject,
+    stc_change.plot(src=src, subject=fs_subject,
                     subjects_dir=subjects_dir,
                     surface="inflated",
                     views=["lat", "med"],
@@ -111,14 +108,9 @@ def source_recon(subject, session):
                     smoothing_steps=10,
                     time_viewer=False,
                     show_traces=False,
-                    colorbar=True)
+                    colorbar=True,)
     
-    screenshot = brain.screenshot()
-    brain.close()
-    stc_plot = plt.imshow(screenshot)
-    stc_plot.write_png(op.join(figs_dir, deriv_path.basename + "-stim_alpha.png"))
-    
-    ### parcellation beamformer
+    #%% parcellation beamformer
     
     # get labels from parcellation
     subjects_dir = r'R:\DRS-mTBI\Seb\mTBI_predict\FreeSurfer_SUBJECTS'
@@ -136,11 +128,11 @@ def source_recon(subject, session):
     )
     del stcs
     
-    ### create source epochs object
+    #%% create source epochs object
      
     n_epochs = (len(epochs))
     epoch_len = np.shape(epochs[0])[2]
-    source_epochs_data = np.zeros((n_epochs, len(labels), epoch_len))
+    source_epochs_data = np.zeros((len(epochs), len(labels), np.shape(epochs[0])[2]))
     for s, stc_epoch in enumerate(label_ts):
         source_epochs_data[s,:,:] = stc_epoch
         
@@ -149,7 +141,9 @@ def source_recon(subject, session):
     epochs_info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types='misc')
     source_epochs = mne.EpochsArray(source_epochs_data, epochs_info)
     
-    ### save source epochs
+    source_epochs.plot("all")
     
-    source_epochs_fname = deriv_path.basename + "-source_epochs.fif"
+    #%% save source epochs
+    
+    source_epochs_fname = deriv_path.basename + "-source_epochs_btn.fif"
     source_epochs.save(op.join(deriv_path.directory, source_epochs_fname), overwrite=True)

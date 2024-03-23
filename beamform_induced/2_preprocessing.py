@@ -20,11 +20,10 @@ deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
 subject = '2014'
-session = '05N'
+session = '02N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
-date = '20240213'   # for empty room noise (needed for minimum-norm estimate)
 
 bids_path = BIDSPath(subject=subject, session=session,
 task=task, run=run, suffix=suffix, root=bids_root)
@@ -42,16 +41,6 @@ data = read_raw_bids(bids_path=bids_path, verbose=False)
 #data_raw = data.copy()  # these lines allow for easier post-hoc debugging
 print(data.info)
 sfreq = data.info["sfreq"]
-
-# load noise
-noise_fname = op.join(bids_root, 'sub-emptyroom', 'ses-' + date, 'meg', 
-                      'sub-emptyroom_ses-' + date + '_task-noise_meg.fif')
-noise_raw = mne.io.Raw(noise_fname)
-
-# make info with matched channels
-info_matched = mne.channels.equalize_channels((data.info, noise_raw.info), 
-                                              copy=True)
-matched_chs = info_matched[0]["ch_names"]
 
 #%% load triggers
 
@@ -130,7 +119,7 @@ ECG_channels = ["UADC009-4123"]
 blink_channels = ['MLT31-4123', 'MRT31-4123'];
 
 ica = mne.preprocessing.ICA(n_components=30)
-ica.fit(data.copy().pick(matched_chs).pick("mag"), reject_by_annotation=True)
+ica.fit(data.copy().pick("mag"), reject_by_annotation=True)
 
 eog_indices, eog_scores = ica.find_bads_eog(data, EOG_channels[0],
                                             reject_by_annotation=True)
@@ -147,24 +136,16 @@ ica.plot_properties(data, picks=ica.exclude)
 ica.plot_sources(data)
 
 # apply
-ica.apply(data.pick(matched_chs).pick("mag"))
+ica.apply(data.pick("mag"))
 #data_ica = data.copy()
-
-#%% preprocess empty room
-
-noise_raw.apply_gradient_compensation(grade=3)
-noise_raw.load_data().filter(l_freq=1, h_freq=45)
-noise_raw.info['bads'] = data.info['bads']
-ica.apply(noise_raw.pick(matched_chs).pick("mag"))
 
 #%% save out preprocessed data
 
 preproc_fname = deriv_path.basename + "-raw.fif"
 events_fname = deriv_path.basename + "-events.fif"
-noise_fname = deriv_path.basename + "-noise.fif"
 data.save(op.join(deriv_path.directory, preproc_fname), overwrite=True)
 mne.write_events(op.join(deriv_path.directory, events_fname), events, overwrite=True)
-noise_raw.save(op.join(deriv_path.directory, noise_fname), overwrite=True)
+
 
 
 

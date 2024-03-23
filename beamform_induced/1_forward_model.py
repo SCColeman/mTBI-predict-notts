@@ -5,13 +5,9 @@ Create forward model based on FreeSurfer reconstruction, CTF MEG
 @author: Sebastian C. Coleman, ppysc6@nottingham.ac.uk
 """
 
-import os
 import os.path as op
-
-import numpy as np
 import mne
-from mne_bids import BIDSPath, read_raw_bids, inspect_dataset
-from matplotlib import pyplot as plt
+from mne_bids import BIDSPath, read_raw_bids
 
 ### need the following line so 3d plotting works, for some reason
 mne.viz.set_3d_options(depth_peeling=False, antialias=False)
@@ -19,11 +15,11 @@ mne.viz.set_3d_options(depth_peeling=False, antialias=False)
 #%% set up BIDS path
 
 bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
-deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
+deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2011'
-session = '03N'
+subject = '2009'
+session = '02N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -34,18 +30,19 @@ task=task, run=run, suffix=suffix, root=bids_root)
 deriv_path = BIDSPath(subject=subject, session=session,
 task=task, run=run, suffix=suffix, root=deriv_root)
 
+# write derivatives path if it doesn't exist
 if not op.exists(deriv_path.directory):
     deriv_path.mkdir()
 
-#%% load data for info 
+#%% load data
 
 data = read_raw_bids(bids_path=bids_path, verbose=False)
+data.pick("mag")
 info = data.info
 
 #%% Get FS reconstruction for subject or use fsaverage for quick testing
 
-fs_dir = mne.datasets.fetch_fsaverage(verbose=True)  # for fsaverage
-#subjects_dir = op.dirname(fs_dir)    # for fsaverage
+#subjects_dir = op.dirname(mne.datasets.fetch_fsaverage(verbose=True))   # for fsaverage
 subjects_dir = r'R:\DRS-mTBI\Seb\mTBI_predict\FreeSurfer_SUBJECTS'
 
 # Name of the subject directory in FS subjects_dir
@@ -77,6 +74,13 @@ coreg = mne.coreg.Coregistration(data.info, fs_subject,
                             subjects_dir=subjects_dir)
 mne.viz.plot_alignment(data.info, trans=coreg.trans, **plot_kwargs)
 coreg.fit_fiducials()
+coreg.set_grow_hair(0)
+coreg.fit_icp(20)
+coreg.omit_head_shape_points(5 / 1000)
+coreg.fit_icp(20)
+coreg.omit_head_shape_points(5 / 1000)
+coreg.fit_icp(20)
+coreg.omit_head_shape_points(5 / 1000)
 coreg.fit_icp(20)
 mne.viz.plot_alignment(data.info, trans=coreg.trans, **plot_kwargs)
 

@@ -25,7 +25,7 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2001'
+subject = '2009'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -67,29 +67,43 @@ for source_epoch in source_epochs:
 
 source_filter = []
 for raw_inst in source_raw:
-    source_filter.append(raw_inst.copy().filter(8, 13, picks="all")) 
+    source_filter.append(raw_inst.copy().filter(1, 30, picks="all")) 
     
 #%% apply Hilbert
 
-source_envelope = []
+#source_envelope = []
+#for raw_inst in source_filter:
+#    source_envelope.append(raw_inst.copy().apply_hilbert(envelope=True, picks="all"))
+    
+#%% z-score
+
+source_zscore = []
 for raw_inst in source_filter:
-    source_envelope.append(raw_inst.copy().apply_hilbert(envelope=True, picks="all"))
+    data = raw_inst.get_data()
+    data_zscore = zscore(data, axis=1)
+    source_zscore.append(mne.io.RawArray(data_zscore, raw_info))
+    del data, data_zscore
+    
+#%% take absolute
 
-#%% convert to pandas dataframe for further steps
+source_abs = []
+for raw_inst in source_zscore:
+    data = raw_inst.get_data()
+    data_abs = np.abs(data)
+    source_abs.append(mne.io.RawArray(data_abs, raw_info))
+    del data, data_abs
 
-X_list = []
-for session in range(len(sessions)):
-    X = source_filter[session].get_data().transpose()
-    X_zscore = zscore(X, axis=0)
-    X_list.append(X_zscore)
+#%% convert to single data matrix
+
+X_list = [source_abs[i].get_data().transpose() for i in range(len(sessions))]
     
 #%% kmeans to calculate "microstates"
 
 X_concat = np.concatenate(X_list, axis=0)
-k = 6
+k = 8
 kmeans = KMeans(n_clusters=k).fit(X_concat)
 centroids = kmeans.cluster_centers_
-idx = kmeans.fit_predict(X_zscore)
+idx = kmeans.fit_predict(X_concat)
 
 centroids_fname = op.join(deriv_root, "kmeans_networks_all_sessions", 
                           subject + "_" + str(k) + "k_centroids")
@@ -98,62 +112,3 @@ np.save(centroids_fname + ".npy", centroids)
 idx_fname = op.join(deriv_root, "kmeans_networks_all_sessions", 
                           subject + "_" + str(k) + "k_idx")
 np.save(idx_fname + ".npy", idx)
-
-#%% plot microstate centroids (spatial maps)
-
-fs_dir = mne.datasets.fetch_fsaverage(verbose=True)
-subjects_dir = op.dirname(fs_dir)
-parc = "aparc"
-labels = mne.read_labels_from_annot("fsaverage", parc=parc, subjects_dir=subjects_dir)
-labels = labels[:-1]
-
-for state in range(k):
-    stc = mne.labels_to_stc(labels, centroids[state,:].transpose())
-    
-    stc.plot(
-        clim=dict(kind="percent", lims=[75, 85, 95]),
-        colormap="Reds",
-        subjects_dir=subjects_dir,
-        views=["lat", "med"],
-        size=600,
-        hemi="split",
-        smoothing_steps=10,
-        time_viewer=False,
-        show_traces=False,
-        colorbar=True,
-    )
-
-
-#%% create epochs object out of microstate index timecourses
-
-sfreq = source_epochs[0].info["sfreq"]
-
-cluster_timecourses = np.zeros((k, len(idx)))
-for state in range(k):
-    cluster_timecourses[state,:] = idx==state
-    
-cluster_names=["cluster_" + str(i) for i in range(k)]
-cluster_info = mne.create_info(ch_names=cluster_names, sfreq=sfreq, ch_types='misc')
-cluster_raw = mne.io.RawArray(cluster_timecourses, cluster_info)
-
-duration = 2 + 1/sfreq
-events = mne.make_fixed_length_events(cluster_raw, duration=duration)
-
-event_id = 1
-tmin, tmax = 0, 2
-cluster_epochs = mne.Epochs(
-    cluster_raw,
-    events,
-    event_id,
-    tmin,
-    tmax,
-    baseline=None,
-    preload=True)
-
-#%% plot timecourse of each cluster
-
-cluster_evoked = cluster_epochs.average("all")
-
-for state in range(k):
-    cluster_evoked.plot("cluster_" + str(state))
-

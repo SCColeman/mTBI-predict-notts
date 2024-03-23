@@ -19,27 +19,24 @@ mne.viz.set_3d_options(depth_peeling=False, antialias=False)
 #%% set up BIDS path
 
 bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
-deriv_root = r'R:\DRS-PSR\Seb\mTBI_testing\derivatives'
-
-# scanning session info
-subject = '2001'
-task = 'CRT'  # name of the task
-run = '01'
-suffix = 'meg'
+deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 #%% load kmeans outputs
 
-k = 6
-centroids_fname = op.join(deriv_root, "kmeans_networks_all_sessions", 
-                          subject + "_" + str(k) + "k_centroids.npy")
-idx_fname = op.join(deriv_root, "kmeans_networks_all_sessions", 
-                          subject + "_" + str(k) + "k_idx.npy")
+k = 8
+centroids_fname = op.join(deriv_root, "microstates_group", 
+                          "group_" + str(k) + "k_centroids.npy")
+idx_fname = op.join(deriv_root, "microstates_group", 
+                          "group_" + str(k) + "k_idx.npy")
+info_fname = op.join(deriv_root, "microstates_group", 
+                          "group_" + str(k) + "k_session_info.npy")
 centroids = np.load(centroids_fname)
 idx = np.load(idx_fname)
+info = np.load(info_fname)
 
 #%% create epochs object out of microstate index timecourses
 
-sfreq = 250
+sfreq = 600
 
 cluster_timecourses = np.zeros((k, len(idx)))
 for state in range(k):
@@ -67,9 +64,6 @@ cluster_epochs = mne.Epochs(
 
 cluster_evoked = cluster_epochs.average("all")
 
-for state in range(k):
-    cluster_evoked.plot("cluster_" + str(state))
-
 #%% take screenshot of brain plot
 
 fs_dir = mne.datasets.fetch_fsaverage(verbose=True)
@@ -78,16 +72,21 @@ parc = "aparc"
 labels = mne.read_labels_from_annot("fsaverage", parc=parc, subjects_dir=subjects_dir)
 labels = labels[:-1]
 
-colormap = "bwr"
-clim=dict(kind="value", pos_lims=[0.4, 0.6, 1])
+colormap = "BuPu"
+clims = [] 
 
 screenshot = []
 
 for state in range(k):
     stc = mne.labels_to_stc(labels, centroids[state,:].transpose())
+    mean_stc = np.mean(np.abs(centroids[state,:]))
+    SE_stc = np.std(np.abs(centroids[state,:]))/np.sqrt(len(labels))
+    max_stc = np.max(np.abs(centroids[state,:]))
+    pos_lims = [mean_stc - SE_stc, mean_stc, max_stc]
+    clims.append(dict(kind="value", lims=pos_lims))
     
     brain = stc.plot(
-        clim=clim,
+        clim=clims[state],
         colormap=colormap,
         background="w",
         subjects_dir=subjects_dir,
@@ -164,5 +163,6 @@ for state in range(k):
     axes[brain_idx].imshow(cropped_screenshot[state])
     axes[brain_idx].axis("off")
     # add a vertical colorbar with the same properties as the 3D one
-    cbar = mne.viz.plot_brain_colorbar(cax, clim, colormap, label="Alpha Envelope (SD)")
+    cbar = mne.viz.plot_brain_colorbar(cax, clims[state], colormap, 
+                                       label="Amplitude (SD)")
     plt.tight_layout()
