@@ -76,36 +76,36 @@ centroids = np.load(centroids_fname)
 idx = np.load(idx_fname)
 info = np.load(info_fname)
 
-#%% get cluster probability timecourses
+#%% get microstate probability timecourses
 
 sfreq = 600
 
-cluster_timecourses = np.zeros((k, len(idx)))
+microstate_timecourses = np.zeros((k, len(idx)))
 for state in range(k):
-    cluster_timecourses[state,:] = idx==state
+    microstate_timecourses[state,:] = idx==state
     
 #%% separate by session
 
 i = 0
-cluster_mean_lh = np.zeros((k, len(info[:,0])))
-cluster_mean_rh = np.zeros((k, len(info[:,0])))
+microstate_mean_lh = np.zeros((k, len(info[:,0])))
+microstate_mean_rh = np.zeros((k, len(info[:,0])))
 for s, session in enumerate(info[:,0]):
     npoints = info[s,1].astype(int)
-    sub_cluster = cluster_timecourses[:,i:i+npoints]
+    sub_microstate = microstate_timecourses[:,i:i+npoints]
     i += npoints
     
     # make epochs object for subject
-    cluster_names=["cluster_" + str(i) for i in range(k)]
-    cluster_info = mne.create_info(ch_names=cluster_names, sfreq=sfreq, ch_types='misc')
-    cluster_raw = mne.io.RawArray(sub_cluster, cluster_info)
+    microstate_names=["microstate_" + str(i) for i in range(k)]
+    microstate_info = mne.create_info(ch_names=microstate_names, sfreq=sfreq, ch_types='misc')
+    microstate_raw = mne.io.RawArray(sub_microstate, microstate_info)
     
     duration = 2 + 1/sfreq
-    events = mne.make_fixed_length_events(cluster_raw, duration=duration)
+    events = mne.make_fixed_length_events(microstate_raw, duration=duration)
     
     event_id = 1
     tmin, tmax = 0, 2
-    cluster_epochs = mne.Epochs(
-        cluster_raw,
+    microstate_epochs = mne.Epochs(
+        microstate_raw,
         events,
         event_id,
         tmin,
@@ -116,15 +116,16 @@ for s, session in enumerate(info[:,0]):
     window_lh_i = [(window_lh[0]+0.8)*sfreq, (window_lh[1]+0.8)*sfreq]
     window_rh = (RTs_lh[s]-0.1, RTs_lh[s]+0.1)
     window_rh_i = [(window_lh[0]+0.8)*sfreq, (window_lh[1]+0.8)*sfreq]
-    cluster_evoked = cluster_epochs.average("all").get_data()
-    cluster_mean_lh[:, s] = np.mean(cluster_evoked[:, int(window_lh_i[0]):int(window_lh_i[1])], 1)
-    cluster_mean_rh[:, s] = np.mean(cluster_evoked[:, int(window_rh_i[0]):int(window_rh_i[1])], 1)
+    microstate_evoked = microstate_epochs.average("all").get_data()
+    microstate_mean_lh[:, s] = np.mean(microstate_evoked[:, int(window_lh_i[0]):int(window_lh_i[1])], 1)
+    microstate_mean_rh[:, s] = np.mean(microstate_evoked[:, int(window_rh_i[0]):int(window_rh_i[1])], 1)
 
-cluster_mean_lh = np.delete(cluster_mean_lh, 16, 1)
-cluster_mean_rh = np.delete(cluster_mean_rh, 16, 1)
+microstate_mean_lh = np.delete(microstate_mean_lh, 16, 1)
+microstate_mean_rh = np.delete(microstate_mean_rh, 16, 1)
 RTs_lh = np.delete(RTs_lh, 16)
 RTs_rh = np.delete(RTs_rh, 16)
 
+info = np.delete(info, 16, 0)
 
 #%% correlate with RT
 
@@ -147,7 +148,9 @@ def slr_plot(X, Y, subs, plot=True):
         df['y_model'] = y_model
         df['group'] = subs
         sns.scatterplot(df, x='X', y='Y', hue='group')
-        sns.lineplot(df, x='X', y='y_model', color='r')
+        sns.regplot(df, x='X', y='Y', scatter=False, 
+                    line_kws=dict(color="purple"))
+        sns.set(style="darkgrid")
         ax.set(title='R^2 = ' + str("%.2f" % rsq) + ' , p = ' + str("%.2f" % p))
         plt.show()
     else:
@@ -155,18 +158,17 @@ def slr_plot(X, Y, subs, plot=True):
         ax = []
     return rsq, p, fig, ax
 
-info = np.delete(info, 16, 0)
 subnums = info[:,0]
 subnums = [subnums[i][:4] for i in range(len(subnums))]
 for state in range(k):
-    x = cluster_mean_lh[state,:]
+    x = microstate_mean_lh[state,:]
     y = RTs_lh.copy()
     sns.set()
     rsq, p, fig, ax = slr_plot(x, y, subnums, True)
     ax.set(ylabel='LH Reaction Times (s)', xlabel='State Probability')
     plt.tight_layout()
     
-    x = cluster_mean_rh[state,:]
+    x = microstate_mean_rh[state,:]
     y = RTs_rh.copy()
     sns.set()
     rsq, p, fig, ax = slr_plot(x, y, subnums, True)

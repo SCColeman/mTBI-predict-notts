@@ -66,10 +66,6 @@ epochs = mne.Epochs(
     reject=dict(mag=4e-12),
     reject_by_annotation=True)
 
-#%% get events
-
-events1 = mne.find_events(epochs, stim_channel="UPPT001")   # for button press
-
 #%% make forward model and inverse from files
 
 src = mne.read_source_spaces(src)
