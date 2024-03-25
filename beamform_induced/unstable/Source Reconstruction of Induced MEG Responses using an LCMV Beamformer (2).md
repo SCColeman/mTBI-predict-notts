@@ -24,7 +24,7 @@ Whenever we save objects out, they must be saved into the derivatives BIDS path,
 ##### Loading data
 Data is loaded from the BIDS paths using `read_raw_bids` from the mne_bids package. For forward modelling, We are only using this data for the `info` object, containing meta-data stored in the MEG dataset. The info object can be simply obtained by typing `data.info`. Specifically, this info object is required because it contains a *montage*, i.e., a set of 3D coordinates corresponding to sensor locations, HPI coil locations, and digitised headshape points (taken using a polhemus or other digitisation methods). If you run `data.info`, you should see a line among the outputs that looks something like *"dig: 385 items (3 Cardinal, 482 Extra)"*, meaning the montage contains a digitisation of three HPI coils (used as fiducial markers) and 482 headshape points.
 
-![The Info Object](readme_figs/info.png)
+![The Info Object](URL "The Info Object")
 
 ##### Load FreeSurfer Files
 Next we load the outputs from FreeSurfer. These are contained in the `subjects_dir` directory. For more information on this, see the README file in **freesurfer_recon**. If you have a FreeSurfer reconstruction for the subject, set `subjects_dir = r"path\to\your\freesurfer\subjects_dir"` and then set `fs_subject` to a string corresponding to the name of the subject folder in `subjects_dir`, e.g. "sub-01". If you do not have a FreeSurfer reconstruction for the subject MRI, set `subjects_dir = op.dirname(mne.datasets.fetch_fsaverage(verbose=True))`, and set `fs_subject = "fsaverage"`, which allows you to use a template freesurfer reconstruction from the MNI-152 brain. However, note that **fsaverage should only be used for testing, not proper study results**.
