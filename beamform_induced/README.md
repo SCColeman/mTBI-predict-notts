@@ -68,7 +68,56 @@ The goals of pre-processing MEG data (in this case) are as follows:
 
 As opposed to other pre-processing procedures, this one is designed to be as general as possible, i.e., avoiding narrowband filtering and epoching, to allow for a lot of flexibility in later analysis steps. In addition, this pre-processing procedure (along with forward modelling and beamforming) is completely automated, requiring no user input beyond the scanning details (which can be inputted quite simply using bash etc).
 
-####
+#### Setting up Paths and Loading Data
+Paths are set up identically to the forward modelling script.
+
+Data is loaded the same as in the forward modelling script, but naturally we now want to use the data itself rather than just the info object.
+
+#### Loading Events
+Events are crucial to most M/EEG analysis procedures. In our case, these are read directly from the `.fif` file containing the raw MEG data, using the `find_events` function. The function requires the name of the *stim* channel. If you don't know what this is, it can be found by plotting the data using `data.plot()` and scrolling down beyond the MEG data channels. The channels containing short pulses are likely the stim channels. Note that events can also be read from *annotations*, which are markers on the data rather than actual voltage channels.
+
+The output of `find_events` is an `events` array, which is a numpy array of shape (*n_events, 3*), where the first column is the datapoint, the second is the duration, and the third is the event value (or event *ID*).
+
+![events](readme_figs/events.png "The Events Array")
+
+#### Basic Pre-Processing
+Next, we clean the data up by first applying *third-order gradiometry*, specific to CTF MEG systems, by running `apply_gradient_compensation` with `grade=3` (representing the *order* of the synthetic gradiometry being applied). Synthetic gradiometry increases sensitivity to nearby magnetic fields (i.e., from the brain) and greatly reduces the sensitivity to fields which come from distant sources (i.e., external sources of noise). 
+
+**Note: Third-order gradiometry will be removed if you select a subset of channels from the data object, e.g. using `data.pick`**
+
+We then filter to a so-called *broadband*, which is a frequency range that includes most of the brain activity but gets rid of all other frequencies to reduce noise. Most brain signals of interest manifest in the 1-100 Hz range, however, for MEG it is advantageous to filter below 50 Hz to avoid mains-electricity noise. The effect of these basic pre-processing steps is shown below.
+
+![grad_filt](readme_figs/preproc.png "The Effect of Gradiometry and Broadband Filtering")
+
+#### Annotating Corrupted Data Segments
+The first stage of annotation is head movement. During a MEG recording, we also take data from a set of head-position indicator (HPI) coils. Using these, we can plot the position of the head during the entire scan. HPI positions are taken using `hpi.extract_chpi_locs_ctf` and `hpi.compute_head_pos`. The positions are then converted to *gradients* using `np.gradient`, allowing a threshold to be set which indicates moments of sudden head movement. From the figure below, it is clear which points in time the participant made sudden head movements.
+
+![hpi](readme_figs/movement.png "Plots of Head Movement During the Scan")
+
+Once timepoints of high head movement have been identified, this must be converted to an `Annotations` object. This is structured exactly like the `events` array from earlier, in that we need an array of indices which represent the onset times, an array of durations, and an array of descriptors. These three arrays are then passed to the `Annotations` class, **along with the *starting time* of the scan**, found using `data.info['meas_date']`. 
+
+Next, SQUID resets and muscle artefacts are identified using the `preprocessing.annotate_amplitude` function. This function identifies local peaks in signal amplitude which are distinct from the neighbouring datapoints, i.e., not slow continuous changes. The function requires a `peak` threshold, as well as a `min_duration` which is the minimum duration that the signal must remain above `peak` to be considered an artefact. Optionally, the function takes a `bad_percent` parameter which is the percentage of time a channel must remain above the artefact threshold to be considered a bad channel. SQUID resets are identified using a very high threshold (because these events are so big!), while a much smaller threshold is used to detect muscle artefacts.
+
+Annotations objects are made for the SQUID resets and muscle artefacts, in exactly the same way as the head movements. However, I find the SQUID resets should be given a long duration which starts before and finishes after the actual event (by several seconds!) as many of the channels do not return to baseline for a little while. Muscle artefacts can be given shorter durations.
+
+Once all the separate `Annotations` objects have been made, they can be set in the data using `data.set_annotations` and passing **the sum** of the annotations created by each source of noise.
+
+**It is important that you check that the peak values and durations are configured properly for your dataset.**
+
+#### Power Spectral Density 
+The power spectral density (PSD) is plotted at this stage (which automatically ignored the bad annotated segments) as a way to check that quality of the data after basic pre-processing. A good and bad example is shown below. The bottom PSD was created by purposely not annotating the SQUID resets, i.e., if the PSD looks like that, check for bad channels and SQUID resets or movement using `data.plot()`, and perhaps adjust annotation thresholds/durations.
+
+![psd](readme_figs/psd_compare.png "A good and bad PSD")
+
+#### Automated ICA Artefact Removal
+After removal of gross artefacts, blinking and cardiac artefacts can be removed quite simply using ICA. In this pipeline, we automate this by comparing the ICA outputs to particular channels, named `EOG_channels`, `blink_channels` and `ECG_channels`. If you have separate EOG/ECG in your dataset, this is particularly easy, however, certain MEG channels can be chosen (e.g. MLT31/MRT31) which are particularly sensitive to blinking/EOG, and theoretically the ECG can be deduced from a combination of all MEG channels (i.e., passing no argument).
+
+Fitting the ICA only requires the number of components, which I set as 30 to include more subtle EOG/cardiac components that are sometimes missed. The `ICA` object is established first using only the number of components, and is then fit to the data using `ica.fit`, where we also pass the data as well as `reject_by_annotation=True` so that bad segments are not included in the ICA fitting.
+
+Following ICA fitting, the bad components are identified using `find_bads_eog` and `find_bads_ecg`. Bad components are plotted and subsequently removed from the data. Examples of blink/EOG and cardiac component topomaps are shown below.
+
+![ICA](readme_figs/ICA_fields.png "EOG and ECG ICA components")
+
 
 
 
