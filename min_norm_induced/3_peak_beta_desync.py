@@ -30,12 +30,12 @@ plot_TFS = False
 
 # scanning session info
 for subject in ['2001', '2003', '2008', '2009', '2014']:
-    #subject = '2001'    
+    #subject = '2001'
     # each session
     sessions = os.listdir(op.join(deriv_root, "sub-" + subject))
     sessions = [sessions[i][4:] for i in range(len(sessions))]    
     for session in sessions:
-        session = '01N'
+        #session = '01N'
         task = 'CRT'  # name of the task
         run = '01'
         suffix = 'meg'
