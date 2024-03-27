@@ -19,8 +19,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2014'
-session = '02N'
+subject = '2001'
+session = '03N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -34,7 +34,7 @@ task=task, run=run, suffix=suffix, root=deriv_root)
 if not op.exists(deriv_path.directory):
     deriv_path.mkdir()
     
-#%% load dataset and empty room noise
+#%% load dataset 
 
 # load data
 data = read_raw_bids(bids_path=bids_path, verbose=False)
