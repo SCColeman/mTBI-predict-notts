@@ -19,8 +19,8 @@ bids_root = r'R:\DRS-mTBI\Seb\mTBI_predict\BIDS'
 deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
-subject = '2001'
-session = '03N'
+subject = '2009'
+session = '04N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -46,7 +46,7 @@ sfreq = data.info["sfreq"]
 
 events1 = mne.find_events(data, stim_channel="UPPT001")   # for button press
 events2 = mne.find_events(data, stim_channel="UPPT002")   # for stims
-events2[events2[:,2]==1,2] = 2
+events2[events2[:,2]==1,2] = 2   # changes duplicate trigger val 
 events = np.concatenate((events1, events2))
 mne.viz.plot_events(events)
 
@@ -72,8 +72,9 @@ head_pos_grad = head_pos.copy()
 head_pos_grad[:,1:] = np.gradient(head_pos[:,1:], axis=0)
 head_movement_fig = mne.viz.plot_head_positions(head_pos_grad, mode="traces")
 
-# mark bad head movements greater than 2mm / s
-bad_head_bool = head_pos_grad[:,1:4] > 0.001
+# mark bad head movements greater than 1mm / s
+thresh = 0.001  # 1mm / s, adjust accordingly
+bad_head_bool = head_pos_grad[:,1:4] > thresh
 bad_head_bool = np.sum(bad_head_bool, axis=1) > 0
 
 # create annotation
@@ -90,8 +91,8 @@ bad_head_annot = mne.Annotations(bad_head_onset, bad_head_duration,
 squid_annot, bad_chan = mne.preprocessing.annotate_amplitude(
                                     data, peak=dict(mag=2e-12), picks='meg',
                                     bad_percent=5, min_duration=0.005)
-squid_annot.onset = squid_annot.onset - 2
-squid_annot.duration = [4] * len(squid_annot.duration)
+squid_annot.onset = squid_annot.onset - 2  # remove 2 s before 
+squid_annot.duration = [4] * len(squid_annot.duration)  # stretch out annotation
 data.info["bads"].extend(bad_chan)
 
 #%% annotate smaller muscle artefacts etc (DONT USE ZSCORE HERE)
