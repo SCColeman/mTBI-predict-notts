@@ -23,7 +23,7 @@ deriv_root = r'R:\DRS-mTBI\Seb\mTBI_predict\derivatives'
 
 # scanning session info
 subject = '2014'
-session = '05N'
+session = '02N'
 task = 'CRT'  # name of the task
 run = '01'
 suffix = 'meg'
@@ -74,7 +74,7 @@ inv = make_inverse_operator(data.info, fwd, noise_cov)
 
 #%% test beamformer by plotting pseudo T
 
-fband = [8, 13]
+fband = [4, 8]
 epochs_filt = epochs.copy().filter(fband[0], fband[1])
 lambda2 = 1  # this should be 1/SNR^2, but we assume SNR=1 for non-evoked data
 
